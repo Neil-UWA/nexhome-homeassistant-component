@@ -4,12 +4,10 @@ from homeassistant.core import HomeAssistant
 from .const import (
     DEVICES, ALL_PLATFORM, SN_CONFIG, IP_CONFIG, DOMAIN,
     FILTER_MODE_CONFIG, FILTER_DEVICES_CONFIG,
-    UDP_LISTENER, MQTT_HANDLER, MQTT_ENABLED_CONFIG, MQTT_TOPIC_CONFIG,
-    MQTT_DEFAULT_TOPIC, PUSH_ENABLED,
+    UDP_LISTENER, PUSH_ENABLED,
 )
 from .header import ServiceTool
 from .nexhome_discover import UDPListener
-from .mqtt_handler import MqttHandler
 from .utils import set_hass_obj
 from .coordinator_manager import CoordinatorManager
 
@@ -19,7 +17,7 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, entry):
     await register_device_list_service(hass, entry)
 
-    # 启动推送监听（UDP + 可选 MQTT）
+    # 启动推送监听（UDP）
     push_enabled = await _async_start_push_listeners(hass, entry)
     set_hass_obj(hass, PUSH_ENABLED, push_enabled)
 
@@ -39,10 +37,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_start_push_listeners(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """启动 UDP 和 MQTT 推送监听器，返回是否成功启动至少一个。"""
+    """启动 UDP 推送监听器，返回是否成功启动。"""
     push_enabled = False
 
-    # 1. 启动 UDP 推送监听（网关原生支持）
     try:
         udp_listener = UDPListener(hass)
         await udp_listener.start()
@@ -52,34 +49,15 @@ async def _async_start_push_listeners(hass: HomeAssistant, entry: ConfigEntry) -
     except Exception:
         _LOGGER.warning("UDP 推送监听启动失败，将使用轮询模式", exc_info=True)
 
-    # 2. 启动 MQTT 推送监听（可选）
-    mqtt_enabled = entry.data.get(MQTT_ENABLED_CONFIG, False)
-    if mqtt_enabled:
-        mqtt_topic = entry.data.get(MQTT_TOPIC_CONFIG, MQTT_DEFAULT_TOPIC)
-        try:
-            mqtt_handler = MqttHandler(hass, mqtt_topic)
-            await mqtt_handler.async_start()
-            set_hass_obj(hass, MQTT_HANDLER, mqtt_handler)
-            push_enabled = True
-            _LOGGER.info("Nexhome MQTT 推送监听已就绪")
-        except Exception:
-            _LOGGER.warning("MQTT 推送监听启动失败", exc_info=True)
-
     return push_enabled
 
 
 async def _async_stop_push_listeners(hass: HomeAssistant):
-    """停止所有推送监听器。"""
+    """停止推送监听器。"""
     if DOMAIN in hass.data:
-        # 停止 UDP
         udp_listener = hass.data[DOMAIN].get(UDP_LISTENER)
         if udp_listener and isinstance(udp_listener, UDPListener):
             udp_listener.close()
-
-        # 停止 MQTT
-        mqtt_handler = hass.data[DOMAIN].get(MQTT_HANDLER)
-        if mqtt_handler and isinstance(mqtt_handler, MqttHandler):
-            await mqtt_handler.async_stop()
 
 
 async def register_device_list_service(hass, entry):

@@ -71,7 +71,7 @@ class NexhomeEntity(CoordinatorEntity, Entity):
             # 如果协调器还没有更新过，请求一次刷新
             await self.coordinator.async_request_refresh()
 
-        # 监听推送更新信号（UDP/MQTT），实现实时状态更新
+        # 监听推送更新信号（UDP），实现实时状态更新
         device_address = self._device.get("address")
         if device_address:
             self.async_on_remove(
@@ -84,7 +84,7 @@ class NexhomeEntity(CoordinatorEntity, Entity):
 
     @callback
     def _handle_push_update(self, properties: list) -> None:
-        """处理来自 UDP/MQTT 推送的实时状态更新。"""
+        """处理来自 UDP 推送的实时状态更新。"""
         if not properties:
             return
         for prop in properties:

@@ -13,7 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 class NexhomeCoordinator(DataUpdateCoordinator):
     """Manages polling for state changes from the device.
     
-    When push mode is enabled (UDP/MQTT), the poll interval is increased to
+    When push mode is enabled (UDP), the poll interval is increased to
     TIME_NUMBER_PUSH_FALLBACK (60s) as a heartbeat/sync mechanism.
     When push mode is disabled, the original TIME_NUMBER (3s) interval is used.
     """
