@@ -1,31 +1,35 @@
+import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from .const import DEVICES, ALL_PLATFORM, Default_Device, SN_CONFIG, IP_CONFIG, DISCOVER, DOMAIN, FILTER_MODE_CONFIG, FILTER_DEVICES_CONFIG
+from .const import (
+    DEVICES, ALL_PLATFORM, SN_CONFIG, IP_CONFIG, DOMAIN,
+    FILTER_MODE_CONFIG, FILTER_DEVICES_CONFIG,
+    UDP_LISTENER, MQTT_HANDLER, MQTT_ENABLED_CONFIG, MQTT_TOPIC_CONFIG,
+    MQTT_DEFAULT_TOPIC, PUSH_ENABLED,
+)
 from .header import ServiceTool
-from .nexhome_discover import discover, send_test_message
+from .nexhome_discover import UDPListener
+from .mqtt_handler import MqttHandler
 from .utils import set_hass_obj
 from .coordinator_manager import CoordinatorManager
-# 在组件全局作用域中存储监听器引用
-# discoverObj = None
+
+_LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(hass, entry):
-    # global discoverObj
     await register_device_list_service(hass, entry)
+
+    # 启动推送监听（UDP + 可选 MQTT）
+    push_enabled = await _async_start_push_listeners(hass, entry)
+    set_hass_obj(hass, PUSH_ENABLED, push_enabled)
+
     await hass.config_entries.async_forward_entry_setups(entry, ALL_PLATFORM)
-    # for platform in ALL_PLATFORM:
-    #     await hass.async_create_task(hass.config_entries.async_forward_entry_setup(
-    #         entry, platform))
-
-    # discoverObj = hass.data[DOMAIN].get(DISCOVER)
-    # if discoverObj is None:
-    #     discoverObj = await discover(hass)
-    # else:
-    #     await discoverObj.start()
-
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    # discoverObj.close()
+    # 停止推送监听
+    await _async_stop_push_listeners(hass)
+
     # 卸载平台
     for platform in ALL_PLATFORM:
         await hass.config_entries.async_forward_entry_unload(entry, platform)
@@ -34,13 +38,56 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+async def _async_start_push_listeners(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """启动 UDP 和 MQTT 推送监听器，返回是否成功启动至少一个。"""
+    push_enabled = False
+
+    # 1. 启动 UDP 推送监听（网关原生支持）
+    try:
+        udp_listener = UDPListener(hass)
+        await udp_listener.start()
+        set_hass_obj(hass, UDP_LISTENER, udp_listener)
+        push_enabled = True
+        _LOGGER.info("Nexhome UDP 推送监听已就绪")
+    except Exception:
+        _LOGGER.warning("UDP 推送监听启动失败，将使用轮询模式", exc_info=True)
+
+    # 2. 启动 MQTT 推送监听（可选）
+    mqtt_enabled = entry.data.get(MQTT_ENABLED_CONFIG, False)
+    if mqtt_enabled:
+        mqtt_topic = entry.data.get(MQTT_TOPIC_CONFIG, MQTT_DEFAULT_TOPIC)
+        try:
+            mqtt_handler = MqttHandler(hass, mqtt_topic)
+            await mqtt_handler.async_start()
+            set_hass_obj(hass, MQTT_HANDLER, mqtt_handler)
+            push_enabled = True
+            _LOGGER.info("Nexhome MQTT 推送监听已就绪")
+        except Exception:
+            _LOGGER.warning("MQTT 推送监听启动失败", exc_info=True)
+
+    return push_enabled
+
+
+async def _async_stop_push_listeners(hass: HomeAssistant):
+    """停止所有推送监听器。"""
+    if DOMAIN in hass.data:
+        # 停止 UDP
+        udp_listener = hass.data[DOMAIN].get(UDP_LISTENER)
+        if udp_listener and isinstance(udp_listener, UDPListener):
+            udp_listener.close()
+
+        # 停止 MQTT
+        mqtt_handler = hass.data[DOMAIN].get(MQTT_HANDLER)
+        if mqtt_handler and isinstance(mqtt_handler, MqttHandler):
+            await mqtt_handler.async_stop()
+
+
 async def register_device_list_service(hass, entry):
     SN = entry.data.get(SN_CONFIG)
     IP = entry.data.get(IP_CONFIG)
     tool = ServiceTool(IP, SN)
     await tool.login(hass)
     deviceList = await tool.getDevice(hass)
-    # deviceList = [Default_Device] + deviceList
     
     # 从配置中获取筛选设置
     filter_mode = entry.data.get(FILTER_MODE_CONFIG, "exclude")
@@ -71,20 +118,6 @@ async def register_device_list_service(hass, entry):
         }
         for device in deviceList
     ]
-    print('11', device_value)
+    _LOGGER.debug("设备列表: %s", device_value)
     set_hass_obj(hass, DEVICES, device_value)
-    # if DOMAIN not in hass.data:
-    #     hass.data[DOMAIN] = {}
-    # if DEVICES not in hass.data[DOMAIN]:
-    #     hass.data[DOMAIN][DEVICES] = {}
-    # if deviceList:
-    #     hass.data[DOMAIN][DEVICES] = [
-    #             {
-    #                 'device_id': device.get('id'),
-    #                 'device_type_id': device.get('type'),
-    #                 'device_name': device.get('name'),
-    #                 **device
-    #             }
-    #             for device in deviceList
-    #         ]
 

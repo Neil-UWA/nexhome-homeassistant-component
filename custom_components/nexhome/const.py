@@ -12,8 +12,24 @@ DISCOVER = 'discover_obj'
 FILTER_MODE_CONFIG = "filter_mode"  # "include" 或 "exclude"
 FILTER_DEVICES_CONFIG = "filter_devices"  # 设备ID列表
 
-# 轮询时间
+# MQTT 配置
+MQTT_ENABLED_CONFIG = "mqtt_enabled"
+MQTT_TOPIC_CONFIG = "mqtt_topic"
+MQTT_DEFAULT_TOPIC = "nexhome"
+
+# 推送更新信号前缀（每个设备一个信号: {SIGNAL_PUSH_UPDATE}_{device_address}）
+SIGNAL_PUSH_UPDATE = f"{DOMAIN}_push_update"
+# UDP 推送监听器在 hass.data 中的键
+UDP_LISTENER = "udp_listener"
+# MQTT 处理器在 hass.data 中的键
+MQTT_HANDLER = "mqtt_handler"
+# 推送模式是否启用
+PUSH_ENABLED = "push_enabled"
+
+# 轮询时间（秒）
 TIME_NUMBER = 3
+# 推送模式下的回退轮询时间（秒）
+TIME_NUMBER_PUSH_FALLBACK = 60
 
 FAN_MODEL_MAP = {
     "0": "自动",

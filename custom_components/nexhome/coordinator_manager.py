@@ -13,19 +13,20 @@ class CoordinatorManager:
     
     _instances: Dict[str, 'CoordinatorManager'] = {}
     
-    def __init__(self, hass, tool: ServiceTool):
+    def __init__(self, hass, tool: ServiceTool, push_enabled: bool = False):
         self.hass = hass
         self.tool = tool
+        self._push_enabled = push_enabled
         # 按设备地址存储协调器: {device_address: coordinator}
         self._coordinators: Dict[str, NexhomeCoordinator] = {}
         # 按设备地址存储所需的所有标识符: {device_address: set(identifiers)}
         self._device_identifiers: Dict[str, Set[str]] = {}
     
     @classmethod
-    def get_instance(cls, hass, tool: ServiceTool, config_entry_id: str):
+    def get_instance(cls, hass, tool: ServiceTool, config_entry_id: str, push_enabled: bool = False):
         """获取或创建协调器管理器实例"""
         if config_entry_id not in cls._instances:
-            cls._instances[config_entry_id] = cls(hass, tool)
+            cls._instances[config_entry_id] = cls(hass, tool, push_enabled)
         return cls._instances[config_entry_id]
 
     @classmethod
@@ -79,10 +80,12 @@ class CoordinatorManager:
         params = [{'identifier': item, 'address': device_address} 
                   for item in self._device_identifiers[device_address]]
         
-        coordinator = NexhomeCoordinator(self.hass, self.tool, params)
+        coordinator = NexhomeCoordinator(
+            self.hass, self.tool, params, push_enabled=self._push_enabled
+        )
         self._coordinators[device_address] = coordinator
         
-        _LOGGER.debug(f"创建新协调器: {device_address}, 标识符: {self._device_identifiers[device_address]}")
+        _LOGGER.debug(f"创建新协调器: {device_address}, 标识符: {self._device_identifiers[device_address]}, 推送模式: {self._push_enabled}")
         
         return coordinator
     

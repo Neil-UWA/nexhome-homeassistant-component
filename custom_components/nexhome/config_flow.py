@@ -1,10 +1,11 @@
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import config_validation as cv
-from .const import DOMAIN, SN_CONFIG, IP_CONFIG, DISCOVER, FILTER_MODE_CONFIG, FILTER_DEVICES_CONFIG
+from .const import (
+    DOMAIN, SN_CONFIG, IP_CONFIG, FILTER_MODE_CONFIG, FILTER_DEVICES_CONFIG,
+    MQTT_ENABLED_CONFIG, MQTT_TOPIC_CONFIG, MQTT_DEFAULT_TOPIC,
+)
 from .header import ServiceTool
-from .nexhome_discover import discover, send_test_message
-from .utils import set_hass_obj
 
 
 def validate_ip_port(value):
@@ -48,7 +49,6 @@ class NexhomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_device_filter()
 
             except vol.Invalid as err:
-                print(err)
                 errors["base"] = err.error_message
 
         return self.async_show_form(
@@ -79,18 +79,10 @@ class NexhomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_user(errors=errors)
 
         if user_input is not None:
-            # 用户提交了筛选结果
-            filter_mode = user_input.get(FILTER_MODE_CONFIG, "exclude")
-            selected_device_ids = user_input.get(FILTER_DEVICES_CONFIG, [])
-            
-            # 保存配置
-            data = {
-                SN_CONFIG: self._sn,
-                IP_CONFIG: self._ip_address,
-                FILTER_MODE_CONFIG: filter_mode,
-                FILTER_DEVICES_CONFIG: selected_device_ids,
-            }
-            return self.async_create_entry(title="Nexhome", data=data)
+            # 用户提交了筛选结果，跳转到 MQTT 配置步骤
+            self._filter_mode = user_input.get(FILTER_MODE_CONFIG, "exclude")
+            self._filter_devices = user_input.get(FILTER_DEVICES_CONFIG, [])
+            return await self.async_step_mqtt()
 
         # 构建设备选项字典（用于MultiSelect）
         device_options = {}
@@ -121,5 +113,39 @@ class NexhomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders={
                 "instruction": "你可以通过筛选只接入想要的设备。",
                 "note": "在排除模式中,如果不勾选任何设备,则相当于接入所有设备"
+            }
+        )
+
+    async def async_step_mqtt(self, user_input=None):
+        """MQTT 配置步骤（可选）"""
+        errors = {}
+
+        if user_input is not None:
+            mqtt_enabled = user_input.get(MQTT_ENABLED_CONFIG, False)
+            mqtt_topic = user_input.get(MQTT_TOPIC_CONFIG, MQTT_DEFAULT_TOPIC)
+
+            # 保存所有配置
+            data = {
+                SN_CONFIG: self._sn,
+                IP_CONFIG: self._ip_address,
+                FILTER_MODE_CONFIG: self._filter_mode,
+                FILTER_DEVICES_CONFIG: self._filter_devices,
+                MQTT_ENABLED_CONFIG: mqtt_enabled,
+                MQTT_TOPIC_CONFIG: mqtt_topic,
+            }
+            return self.async_create_entry(title="Nexhome", data=data)
+
+        schema_dict = {
+            vol.Optional(MQTT_ENABLED_CONFIG, default=False): bool,
+            vol.Optional(MQTT_TOPIC_CONFIG, default=MQTT_DEFAULT_TOPIC): str,
+        }
+
+        return self.async_show_form(
+            step_id="mqtt",
+            data_schema=vol.Schema(schema_dict),
+            errors=errors,
+            description_placeholders={
+                "instruction": "如果你的网关已配置 MQTT 输出，可以在此启用 MQTT 实时推送。",
+                "note": "不启用 MQTT 时，组件仍会通过网关 UDP 广播接收实时状态更新。"
             }
         )

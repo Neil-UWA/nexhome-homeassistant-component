@@ -1,7 +1,7 @@
 import logging
 import asyncio
 from homeassistant.components.select import SelectEntity
-from .const import TIME_NUMBER, DEVICES, DOMAIN, SCENES, IP_CONFIG, SN_CONFIG
+from .const import TIME_NUMBER, DEVICES, DOMAIN, SCENES, IP_CONFIG, SN_CONFIG, PUSH_ENABLED
 from .nexhome_entity import NexhomeEntity
 from .header import ServiceTool
 from .nexhome_device import NEXHOME_DEVICE
@@ -19,7 +19,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     devices = hass.data[DOMAIN][DEVICES]
     
     # 获取协调器管理器实例
-    coordinator_manager = CoordinatorManager.get_instance(hass, Tool, config_entry.entry_id)
+    push_enabled = hass.data.get(DOMAIN, {}).get(PUSH_ENABLED, False)
+    coordinator_manager = CoordinatorManager.get_instance(hass, Tool, config_entry.entry_id, push_enabled)
     
     if devices:
         selects = []

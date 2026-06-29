@@ -20,6 +20,14 @@
                 },
                 "description": "{instruction}\n\n{note}",
                 "title": "筛选设备"
+            },
+            "mqtt": {
+                "data": {
+                    "mqtt_enabled": "启用 MQTT 推送",
+                    "mqtt_topic": "MQTT 主题前缀"
+                },
+                "description": "{instruction}\n\n{note}",
+                "title": "MQTT 配置（可选）"
             }
         }
     }

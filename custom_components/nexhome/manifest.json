@@ -5,8 +5,8 @@
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/nexhome-org/nexhome-homeassistant-component/blob/main/README.md",
-  "iot_class": "local_polling",
+  "iot_class": "local_push",
   "issue_tracker": "https://github.com/nexhome-org/nexhome-homeassistant-component/issues",
   "loggers": ["NEXhome"],
-  "version": "1.1.16"
+  "version": "1.2.0"
 }

@@ -20,6 +20,14 @@
                 },
                 "description": "{instruction}\n\n{note}",
                 "title": "Filter Devices"
+            },
+            "mqtt": {
+                "data": {
+                    "mqtt_enabled": "Enable MQTT Push",
+                    "mqtt_topic": "MQTT Topic Prefix"
+                },
+                "description": "{instruction}\n\n{note}",
+                "title": "MQTT Configuration (Optional)"
             }
         }
     }
