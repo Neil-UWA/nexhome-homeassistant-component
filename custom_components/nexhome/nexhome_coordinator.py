@@ -1,9 +1,5 @@
-import asyncio
 import logging
 from datetime import timedelta
-import async_timeout
-
-from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import DOMAIN, TIME_NUMBER, TIME_NUMBER_PUSH_FALLBACK
@@ -48,5 +44,5 @@ class NexhomeCoordinator(DataUpdateCoordinator):
                 return device_property
             else:
                 return False
-        except Exception as err:
+        except Exception:
             return False

@@ -34,8 +34,8 @@ def validate_ip_port(value):
 
 class NexhomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
-    async def async_step_user(self, user_input=None):
-        errors = {}
+    async def async_step_user(self, user_input=None, errors=None):
+        errors = errors or {}
         if user_input is not None:
             ip_address = user_input.get("ip_address")
             sn = user_input["sn"]
@@ -120,4 +120,3 @@ class NexhomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "note": "在排除模式中,如果不勾选任何设备,则相当于接入所有设备"
             }
         )
-

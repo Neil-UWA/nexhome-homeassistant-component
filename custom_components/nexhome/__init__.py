@@ -18,7 +18,7 @@ async def async_setup_entry(hass, entry):
     await register_device_list_service(hass, entry)
 
     # 启动推送监听（UDP）
-    push_enabled = await _async_start_push_listeners(hass, entry)
+    push_enabled = await _async_start_push_listeners(hass)
     set_hass_obj(hass, PUSH_ENABLED, push_enabled)
 
     await hass.config_entries.async_forward_entry_setups(entry, ALL_PLATFORM)
@@ -36,7 +36,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def _async_start_push_listeners(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def _async_start_push_listeners(hass: HomeAssistant) -> bool:
     """启动 UDP 推送监听器，返回是否成功启动。"""
     push_enabled = False
 
@@ -98,4 +98,3 @@ async def register_device_list_service(hass, entry):
     ]
     _LOGGER.debug("设备列表: %s", device_value)
     set_hass_obj(hass, DEVICES, device_value)
-
