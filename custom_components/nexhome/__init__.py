@@ -65,7 +65,10 @@ async def register_device_list_service(hass, entry):
     IP = entry.data.get(IP_CONFIG)
     tool = ServiceTool(IP, SN)
     await tool.login(hass)
-    deviceList = await tool.getDevice(hass)
+    deviceList = await tool.getDevice(hass) or []
+    if not isinstance(deviceList, list):
+        _LOGGER.warning("获取设备列表返回异常类型: %s", type(deviceList).__name__)
+        deviceList = []
     
     # 从配置中获取筛选设置
     filter_mode = entry.data.get(FILTER_MODE_CONFIG, "exclude")
