@@ -12,8 +12,17 @@ DISCOVER = 'discover_obj'
 FILTER_MODE_CONFIG = "filter_mode"  # "include" 或 "exclude"
 FILTER_DEVICES_CONFIG = "filter_devices"  # 设备ID列表
 
-# 轮询时间
+# 推送更新信号前缀（每个设备一个信号: {SIGNAL_PUSH_UPDATE}_{device_address}）
+SIGNAL_PUSH_UPDATE = f"{DOMAIN}_push_update"
+# UDP 推送监听器在 hass.data 中的键
+UDP_LISTENER = "udp_listener"
+# 推送模式是否启用
+PUSH_ENABLED = "push_enabled"
+
+# 轮询时间（秒）
 TIME_NUMBER = 3
+# 推送模式下的回退轮询时间（秒）
+TIME_NUMBER_PUSH_FALLBACK = 60
 
 FAN_MODEL_MAP = {
     "0": "自动",

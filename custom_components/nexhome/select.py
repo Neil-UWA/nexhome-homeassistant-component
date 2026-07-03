@@ -1,7 +1,7 @@
 import logging
 import asyncio
 from homeassistant.components.select import SelectEntity
-from .const import TIME_NUMBER, DEVICES, DOMAIN, SCENES, IP_CONFIG, SN_CONFIG
+from .const import TIME_NUMBER, DEVICES, DOMAIN, SCENES, IP_CONFIG, SN_CONFIG, PUSH_ENABLED
 from .nexhome_entity import NexhomeEntity
 from .header import ServiceTool
 from .nexhome_device import NEXHOME_DEVICE
@@ -19,7 +19,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     devices = hass.data[DOMAIN][DEVICES]
     
     # 获取协调器管理器实例
-    coordinator_manager = CoordinatorManager.get_instance(hass, Tool, config_entry.entry_id)
+    push_enabled = hass.data.get(DOMAIN, {}).get(PUSH_ENABLED, False)
+    coordinator_manager = CoordinatorManager.get_instance(hass, Tool, config_entry.entry_id, push_enabled)
     
     if devices:
         selects = []
@@ -61,7 +62,7 @@ class NexhomeSelect(NexhomeEntity, SelectEntity):
     def select_option(self, option: str):
         value = get_key_from_value(self._select_list, option)
         data = {'identifier': self._select_key, 'value': value}
-        self._tool.device_control(data, self._device['address'])
+        self._async_device_control(data)
 
     # async def _update_state(self):
     #     params = [
@@ -95,11 +96,11 @@ class NexhomeSceneSelect(NexhomeSelect):
             if item.get("name") == option:
                 value = item.get("id")
                 data = {'identifier': self._select_key, 'value': str(value)}  # 将value转换为字符串
-                self._tool.device_control(data, self._device['address'])
+                self._async_device_control(data)
                 break
         # value = get_key_from_value(self._select_list, option)
         # data = {'identifier': self._select_key, 'value': value}
-        # self._tool.device_control(data, self._device['address'])
+        # self._async_device_control(data)
 
     async def async_added_to_hass(self):
         await super().async_added_to_hass()

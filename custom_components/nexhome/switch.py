@@ -1,6 +1,6 @@
 import logging
 from homeassistant.components.switch import SwitchEntity
-from .const import DEVICES, DOMAIN, PowerSwitch, IP_CONFIG, SN_CONFIG
+from .const import DEVICES, DOMAIN, PowerSwitch, IP_CONFIG, SN_CONFIG, PUSH_ENABLED
 from .nexhome_entity import NexhomeEntity
 from .header import ServiceTool
 from .nexhome_device import NEXHOME_DEVICE
@@ -21,7 +21,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     devices = hass.data[DOMAIN][DEVICES]
     
     # 获取协调器管理器实例
-    coordinator_manager = CoordinatorManager.get_instance(hass, Tool, config_entry.entry_id)
+    push_enabled = hass.data.get(DOMAIN, {}).get(PUSH_ENABLED, False)
+    coordinator_manager = CoordinatorManager.get_instance(hass, Tool, config_entry.entry_id, push_enabled)
     
     if devices:
         switches = []
@@ -57,7 +58,7 @@ class NexhomeSwitch(NexhomeEntity, SwitchEntity):
     # 1=开，0=关    
     def switch_control(self, val):
         data = {'identifier': PowerSwitch, 'value': val}
-        self._tool.device_control(data, self._device['address'])
+        self._async_device_control(data)
 
     def turn_on(self, **kwargs):
         self._device[PowerSwitch] = '1'
@@ -75,4 +76,4 @@ class NexhomeSwitch(NexhomeEntity, SwitchEntity):
 #     # 1=开，0=关    
 #     def switch_control(self, val):
 #         data = {'identifier': 'PowerSwitch', 'value': val}
-#         self._tool.device_control(data, self._device['address'])
+#         self._async_device_control(data)

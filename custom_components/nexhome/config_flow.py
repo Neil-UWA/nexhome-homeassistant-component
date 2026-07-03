@@ -1,10 +1,10 @@
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import config_validation as cv
-from .const import DOMAIN, SN_CONFIG, IP_CONFIG, DISCOVER, FILTER_MODE_CONFIG, FILTER_DEVICES_CONFIG
+from .const import (
+    DOMAIN, SN_CONFIG, IP_CONFIG, FILTER_MODE_CONFIG, FILTER_DEVICES_CONFIG,
+)
 from .header import ServiceTool
-from .nexhome_discover import discover, send_test_message
-from .utils import set_hass_obj
 
 
 def validate_ip_port(value):
@@ -34,8 +34,8 @@ def validate_ip_port(value):
 
 class NexhomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
-    async def async_step_user(self, user_input=None):
-        errors = {}
+    async def async_step_user(self, user_input=None, errors=None):
+        errors = errors or {}
         if user_input is not None:
             ip_address = user_input.get("ip_address")
             sn = user_input["sn"]
@@ -48,7 +48,6 @@ class NexhomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_device_filter()
 
             except vol.Invalid as err:
-                print(err)
                 errors["base"] = err.error_message
 
         return self.async_show_form(
@@ -79,16 +78,14 @@ class NexhomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_user(errors=errors)
 
         if user_input is not None:
-            # 用户提交了筛选结果
-            filter_mode = user_input.get(FILTER_MODE_CONFIG, "exclude")
-            selected_device_ids = user_input.get(FILTER_DEVICES_CONFIG, [])
-            
-            # 保存配置
+            # 用户提交了筛选结果，创建配置条目
+            self._filter_mode = user_input.get(FILTER_MODE_CONFIG, "exclude")
+            self._filter_devices = user_input.get(FILTER_DEVICES_CONFIG, [])
             data = {
                 SN_CONFIG: self._sn,
                 IP_CONFIG: self._ip_address,
-                FILTER_MODE_CONFIG: filter_mode,
-                FILTER_DEVICES_CONFIG: selected_device_ids,
+                FILTER_MODE_CONFIG: self._filter_mode,
+                FILTER_DEVICES_CONFIG: self._filter_devices,
             }
             return self.async_create_entry(title="Nexhome", data=data)
 

@@ -1,9 +1,10 @@
 from homeassistant.helpers.entity import Entity
-from .const import DOMAIN, TIME_NUMBER
+from .const import DOMAIN, TIME_NUMBER, SIGNAL_PUSH_UPDATE
 from .nexhome_device import NEXHOME_DEVICE
 import logging
 import asyncio
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.core import callback
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class NexhomeEntity(CoordinatorEntity, Entity):
 
     # sw_version (可选): 设备的软件版本。这对于跟踪更新或解决问题可能很有用。
 
-    # via_device (可选): 如果这个设备是通过另一个设备连接到Home Assistant的（例如，一个传感器通过一个网关连接），这里应该填写那个“网关”设备的标识符。
+    # via_device (可选): 如果这个设备是通过另一个设备连接到Home Assistant的（例如，一个传感器通过一个网关连接），这里应该填写那个"网关"设备的标识符。
 
     # configuration_url (可选): 如果设备提供了一个用于配置或管理的web界面，这里可以填写那个界面的URL。
 
@@ -70,6 +71,29 @@ class NexhomeEntity(CoordinatorEntity, Entity):
             # 如果协调器还没有更新过，请求一次刷新
             await self.coordinator.async_request_refresh()
 
+        # 监听推送更新信号（UDP），实现实时状态更新
+        device_address = self._device.get("address")
+        if device_address:
+            self.async_on_remove(
+                async_dispatcher_connect(
+                    self.hass,
+                    f"{SIGNAL_PUSH_UPDATE}_{device_address}",
+                    self._handle_push_update,
+                )
+            )
+
+    @callback
+    def _handle_push_update(self, properties: list) -> None:
+        """处理来自 UDP 推送的实时状态更新。"""
+        if not properties:
+            return
+        for prop in properties:
+            identifier = prop.get("identifier")
+            value = prop.get("value")
+            if identifier is not None:
+                self._device[identifier] = value
+        self.async_write_ha_state()
+
     @callback
     def _handle_coordinator_update(self) -> None:
         self._property = self.coordinator.data
@@ -77,3 +101,16 @@ class NexhomeEntity(CoordinatorEntity, Entity):
             for property in self._property:
                 self._device[property.get('identifier')] = property.get('value', None)
         self.async_write_ha_state()
+
+    def _async_device_control(self, data: dict) -> None:
+        """在执行器线程中异步发送设备控制指令，避免阻塞事件循环。"""
+        address = self._device.get("address")
+        if not address:
+            return
+        self.hass.async_create_task(
+            self.hass.async_add_executor_job(
+                self._tool.device_control,
+                data,
+                address,
+            )
+        )
