@@ -101,3 +101,16 @@ class NexhomeEntity(CoordinatorEntity, Entity):
             for property in self._property:
                 self._device[property.get('identifier')] = property.get('value', None)
         self.async_write_ha_state()
+
+    def _async_device_control(self, data: dict) -> None:
+        """在执行器线程中异步发送设备控制指令，避免阻塞事件循环。"""
+        address = self._device.get("address")
+        if not address:
+            return
+        self.hass.async_create_task(
+            self.hass.async_add_executor_job(
+                self._tool.device_control,
+                data,
+                address,
+            )
+        )

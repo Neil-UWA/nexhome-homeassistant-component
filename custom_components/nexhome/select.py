@@ -62,7 +62,7 @@ class NexhomeSelect(NexhomeEntity, SelectEntity):
     def select_option(self, option: str):
         value = get_key_from_value(self._select_list, option)
         data = {'identifier': self._select_key, 'value': value}
-        self._tool.device_control(data, self._device['address'])
+        self._async_device_control(data)
 
     # async def _update_state(self):
     #     params = [
@@ -96,11 +96,11 @@ class NexhomeSceneSelect(NexhomeSelect):
             if item.get("name") == option:
                 value = item.get("id")
                 data = {'identifier': self._select_key, 'value': str(value)}  # 将value转换为字符串
-                self._tool.device_control(data, self._device['address'])
+                self._async_device_control(data)
                 break
         # value = get_key_from_value(self._select_list, option)
         # data = {'identifier': self._select_key, 'value': value}
-        # self._tool.device_control(data, self._device['address'])
+        # self._async_device_control(data)
 
     async def async_added_to_hass(self):
         await super().async_added_to_hass()

@@ -116,25 +116,25 @@ class NexhomeLight(NexhomeEntity, LightEntity):
     def turn_on(self, **kwargs: Any):
         if not self.is_on:
             data = {'identifier': PowerSwitch, 'value': '1'}
-            self._tool.device_control(data, self._device['address'])
+            self._async_device_control(data)
 
         if ATTR_BRIGHTNESS in kwargs:
             value = kwargs[ATTR_BRIGHTNESS]
             data = {'identifier': Brightness, 'value': value}
-            self._tool.device_control(data, self._device['address'])
+            self._async_device_control(data)
 
         if ATTR_COLOR_TEMP_KELVIN in kwargs:
             # 限制 Kelvin 值在设备支持的范围内
             kelvin_value = int(kwargs[ATTR_COLOR_TEMP_KELVIN])
             kelvin_value = max(min(kelvin_value, self.max_color_temp_kelvin), self.min_color_temp_kelvin)
             data = {'identifier': ColorTem, 'value': kelvin_value}
-            self._tool.device_control(data, self._device['address'])
+            self._async_device_control(data)
 
 
 
     def turn_off(self):
         data = {'identifier': PowerSwitch, 'value': '0'}
-        self._tool.device_control(data, self._device['address'])
+        self._async_device_control(data)
 
     # async def async_added_to_hass(self):
     #     await super().async_added_to_hass()

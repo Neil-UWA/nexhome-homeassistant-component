@@ -58,7 +58,7 @@ class NexhomeSwitch(NexhomeEntity, SwitchEntity):
     # 1=开，0=关    
     def switch_control(self, val):
         data = {'identifier': PowerSwitch, 'value': val}
-        self._tool.device_control(data, self._device['address'])
+        self._async_device_control(data)
 
     def turn_on(self, **kwargs):
         self._device[PowerSwitch] = '1'
@@ -76,4 +76,4 @@ class NexhomeSwitch(NexhomeEntity, SwitchEntity):
 #     # 1=开，0=关    
 #     def switch_control(self, val):
 #         data = {'identifier': 'PowerSwitch', 'value': val}
-#         self._tool.device_control(data, self._device['address'])
+#         self._async_device_control(data)

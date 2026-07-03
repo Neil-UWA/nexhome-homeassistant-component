@@ -61,19 +61,19 @@ class NexhomeCover6(NexhomeEntity, CoverEntity):
         return None
     def open_cover(self, **kwargs):
         data = {'identifier': 'Open', 'value': 1}
-        self._tool.device_control(data, self._device['address'])
+        self._async_device_control(data)
         self.schedule_update_ha_state()
     def close_cover(self, **kwargs):
         data = {'identifier': 'Close', 'value': 1}
-        self._tool.device_control(data, self._device['address'])
+        self._async_device_control(data)
         self.schedule_update_ha_state()
     def stop_cover(self, **kwargs):
         data = {'identifier': 'Stop', 'value': 1}
-        self._tool.device_control(data, self._device['address'])
+        self._async_device_control(data)
         self.schedule_update_ha_state()
     def set_cover_position(self, **kwargs):
         data = {'identifier': 'Location', 'value': kwargs['position']}
-        self._tool.device_control(data, self._device['address'])
+        self._async_device_control(data)
         self.schedule_update_ha_state()
 
 class NexhomeCover108(NexhomeEntity, CoverEntity):
@@ -86,15 +86,15 @@ class NexhomeCover108(NexhomeEntity, CoverEntity):
         return CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE | CoverEntityFeature.STOP
     def open_cover(self, **kwargs):
         data = {'identifier': 'Open', 'value': 1}
-        self._tool.device_control(data, self._device['address'])
+        self._async_device_control(data)
         self.schedule_update_ha_state()
     def close_cover(self, **kwargs):
         data = {'identifier': 'Close', 'value': 1}
-        self._tool.device_control(data, self._device['address'])
+        self._async_device_control(data)
         self.schedule_update_ha_state()
     def stop_cover(self, **kwargs):
         data = {'identifier': 'Stop', 'value': 1}
-        self._tool.device_control(data, self._device['address'])
+        self._async_device_control(data)
         self.schedule_update_ha_state()
     @property
     def is_closed(self):
@@ -117,11 +117,11 @@ class NexhomeCover30(NexhomeEntity, CoverEntity):
         return CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE
     def open_cover(self, **kwargs):
         data = {'identifier': 'Open', 'value': 1}
-        self._tool.device_control(data, self._device['address'])
+        self._async_device_control(data)
         self.schedule_update_ha_state()
     def close_cover(self, **kwargs):
         data = {'identifier': 'Close', 'value': 1}
-        self._tool.device_control(data, self._device['address'])
+        self._async_device_control(data)
         self.schedule_update_ha_state()
     @property
     def is_closed(self):
