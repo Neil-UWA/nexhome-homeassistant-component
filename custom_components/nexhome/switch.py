@@ -1,13 +1,12 @@
 import logging
 from homeassistant.components.switch import SwitchEntity
-from .const import DEVICES, DOMAIN, PowerSwitch, IP_CONFIG, SN_CONFIG
+from .const import DEVICES, DOMAIN, PowerSwitch, IP_CONFIG, SN_CONFIG, PUSH_ENABLED
 from .nexhome_entity import NexhomeEntity
 from .header import ServiceTool
 from .nexhome_device import NEXHOME_DEVICE
 from .nexhome_coordinator import NexhomeCoordinator
 from .coordinator_manager import CoordinatorManager
 from homeassistant.const import Platform
-from homeassistant.config_entries import ConfigEntryState
 _LOGGER = logging.getLogger(__name__)
 StateMap = {
     '0': False,
@@ -21,7 +20,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     devices = hass.data[DOMAIN][DEVICES]
     
     # 获取协调器管理器实例
-    coordinator_manager = CoordinatorManager.get_instance(hass, Tool, config_entry.entry_id)
+    push_enabled = hass.data.get(DOMAIN, {}).get(PUSH_ENABLED, False)
+    coordinator_manager = CoordinatorManager.get_instance(hass, Tool, config_entry.entry_id, push_enabled)
     
     if devices:
         switches = []
@@ -34,8 +34,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                         identifiers = config["identifiers"]
                         # 使用协调器管理器获取或创建共享协调器
                         coordinator = coordinator_manager.get_or_create_coordinator(device_address, identifiers)
-                        if config_entry.state == ConfigEntryState.SETUP_IN_PROGRESS:
-                            await coordinator.async_config_entry_first_refresh()
                         switches.append(NexhomeSwitch(device, entity_key, Tool, coordinator))
         async_add_entities(switches, update_before_add=True)
 
@@ -57,7 +55,7 @@ class NexhomeSwitch(NexhomeEntity, SwitchEntity):
     # 1=开，0=关    
     def switch_control(self, val):
         data = {'identifier': PowerSwitch, 'value': val}
-        self._tool.device_control(data, self._device['address'])
+        self._async_device_control(data)
 
     def turn_on(self, **kwargs):
         self._device[PowerSwitch] = '1'
@@ -75,4 +73,4 @@ class NexhomeSwitch(NexhomeEntity, SwitchEntity):
 #     # 1=开，0=关    
 #     def switch_control(self, val):
 #         data = {'identifier': 'PowerSwitch', 'value': val}
-#         self._tool.device_control(data, self._device['address'])
+#         self._async_device_control(data)

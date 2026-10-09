@@ -2,12 +2,12 @@ from homeassistant.components.number import NumberEntity
 import logging
 from .nexhome_entity import NexhomeEntity
 from .header import ServiceTool
-from .const import DOMAIN, Location, DEVICES, IP_CONFIG, SN_CONFIG
+from .const import DOMAIN, Location, DEVICES, IP_CONFIG, SN_CONFIG, PUSH_ENABLED
 from .nexhome_device import NEXHOME_DEVICE
 from homeassistant.const import Platform
 from .nexhome_coordinator import NexhomeCoordinator
 from .coordinator_manager import CoordinatorManager
-from homeassistant.config_entries import ConfigEntryState
+from .gateway_scheduler import get_gateway_scheduler
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -18,7 +18,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     devices = hass.data[DOMAIN][DEVICES]
     
     # 获取协调器管理器实例
-    coordinator_manager = CoordinatorManager.get_instance(hass, Tool, config_entry.entry_id)
+    push_enabled = hass.data.get(DOMAIN, {}).get(PUSH_ENABLED, False)
+    coordinator_manager = CoordinatorManager.get_instance(hass, Tool, config_entry.entry_id, push_enabled)
     
     if devices:
         numbers = []
@@ -31,8 +32,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                         identifiers = config["identifiers"]
                         # 使用协调器管理器获取或创建共享协调器
                         coordinator = coordinator_manager.get_or_create_coordinator(device_address, identifiers)
-                        if config_entry.state == ConfigEntryState.SETUP_IN_PROGRESS:
-                            await coordinator.async_config_entry_first_refresh()
                         numbers.append(NexhomeInputNumber(device, entity_key, Tool, coordinator))
         async_add_entities(numbers)
 
@@ -59,8 +58,8 @@ class NexhomeInputNumber(NexhomeEntity, NumberEntity):
         _LOGGER.info("NEXhome 设置为 %s", value)
         self._device[Location] = value
         data = {'identifier': 'Location', 'value': value}
-        # 在执行器中调用同步 HTTP 控制，避免阻塞事件循环
-        await self.hass.async_add_executor_job(
+        # 经网关调度器发送控制（控制优先，期间暂停轮询）
+        await get_gateway_scheduler(self.hass).async_control(
             self._tool.device_control,
             data,
             self._device['address'],

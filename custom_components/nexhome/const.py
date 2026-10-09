@@ -12,7 +12,28 @@ DISCOVER = 'discover_obj'
 FILTER_MODE_CONFIG = "filter_mode"  # "include" 或 "exclude"
 FILTER_DEVICES_CONFIG = "filter_devices"  # 设备ID列表
 
-# 轮询时间
+# 推送更新信号前缀（每个设备一个信号: {SIGNAL_PUSH_UPDATE}_{device_address}）
+SIGNAL_PUSH_UPDATE = f"{DOMAIN}_push_update"
+# UDP 推送监听器在 hass.data 中的键
+UDP_LISTENER = "udp_listener"
+# 推送模式是否启用
+PUSH_ENABLED = "push_enabled"
+# 控制命令专用线程池
+CONTROL_EXECUTOR = "control_executor"
+# 轮询请求专用线程池
+POLL_EXECUTOR = "poll_executor"
+# 网关请求调度器（控制优先、轮询串行错峰）
+GATEWAY_SCHEDULER = "gateway_scheduler"
+# 控制请求进行中及完成后暂停轮询的时长（秒）
+CONTROL_POLL_PAUSE_SECONDS = 2.0
+# 相邻两次轮询请求之间的最小间隔（秒）
+POLL_MIN_GAP_SECONDS = 0.2
+# 合并轮询时单次 realtime 请求最多包含的属性项数（实测 380 项约 0.35s）
+POLL_BATCH_SIZE = 400
+# 场景列表刷新间隔（秒），场景很少变化，无需高频拉取
+SCENE_POLL_INTERVAL = 60
+
+# 轮询时间（秒）
 TIME_NUMBER = 3
 
 FAN_MODEL_MAP = {

@@ -4,6 +4,7 @@ import logging
 import requests
 
 _LOGGER = logging.getLogger(__name__)
+REQUEST_TIMEOUT = 10
 
 
 class ServiceTool():
@@ -46,9 +47,9 @@ class ServiceTool():
             data = {
                 'ip': '127.0.0.1'
             }
-            return requests.post(url, headers=Headers, json=data)
+            return requests.post(url, headers=Headers, json=data, timeout=REQUEST_TIMEOUT)
         except requests.exceptions.RequestException as e:
-            _LOGGER.error('请求失败:', e)
+            _LOGGER.error("请求失败: %s", e)
             return False
     # 登录
     async def login(self, hass):
@@ -56,14 +57,14 @@ class ServiceTool():
             response = await hass.async_add_executor_job(self.loginApi)
             return response
         except requests.exceptions.RequestException as e:
-            _LOGGER.error('请求失败:', e)
+            _LOGGER.error("请求失败: %s", e)
             return False
 
     # 获取场景列表
     def sceneList(self):
         Headers = self.getHeader()
         url = f"http://{self.ip_address}/smarthome/scenes"
-        return requests.get(url, headers=Headers)
+        return requests.get(url, headers=Headers, timeout=REQUEST_TIMEOUT)
 
     # 获取设备属性
     def devicePost(self, params):
@@ -72,26 +73,30 @@ class ServiceTool():
         data = {
             'properties': params
         }
-        return requests.post(url, headers=Headers, json=data)
+        return requests.post(url, headers=Headers, json=data, timeout=REQUEST_TIMEOUT)
 
     # 获取设备列表
     def deviceList(self):
         try:
             Headers = self.getHeader()
-            print(Headers)
             url = f"http://{self.ip_address}/smarthome/devices"
-            return requests.get(url, headers=Headers)
+            return requests.get(url, headers=Headers, timeout=REQUEST_TIMEOUT)
         except Exception as e:
-            print('请求失败:', e)
+            _LOGGER.error("请求失败: %s", e)
             return False  # 返回默认值
 
     # 设备控制
     def device_control(self, data, address):
         try:
             Headers = self.getHeader()
-            return requests.post(f"http://{self.ip_address}/smarthome/devices/{address}/control", headers=Headers, json=data)
+            return requests.post(
+                f"http://{self.ip_address}/smarthome/devices/{address}/control",
+                headers=Headers,
+                json=data,
+                timeout=REQUEST_TIMEOUT,
+            )
         except requests.exceptions.RequestException as e:
-            print('请求失败:', e)
+            _LOGGER.error("请求失败: %s", e)
             return False  # 返回默认值
 
     # 批量设备控制
@@ -99,38 +104,49 @@ class ServiceTool():
         try:
             Headers = self.getHeader()
             params = {"devices": data}
-            return requests.post(f"http://{self.ip_address}/smarthome/devices/control", headers=Headers, json=params)
+            return requests.post(
+                f"http://{self.ip_address}/smarthome/devices/control",
+                headers=Headers,
+                json=params,
+                timeout=REQUEST_TIMEOUT,
+            )
         except requests.exceptions.RequestException as e:
-            print('请求失败:', e)
+            _LOGGER.error("请求失败: %s", e)
             return False  # 返回默认值
 
     async def getDevice(self, hass):
         try:
             response = await hass.async_add_executor_job(self.deviceList)
-            print(response.json())
-            return response.json()['result']['elements']
-        except requests.exceptions.RequestException as e:
-            print('请求失败:', e)
+            if not response:
+                return False
+            response.raise_for_status()
+            return response.json().get('result', {}).get('elements', [])
+        except Exception as e:
+            _LOGGER.error("获取设备列表失败: %s", e)
             return False  # 返回默认值
 
     async def getScene(self, hass):
         try:
             response = await hass.async_add_executor_job(self.sceneList)
-            return response.json()['result']['elements']
-        except requests.exceptions.RequestException as e:
-            print('请求失败:', e)
+            if not response:
+                return False
+            response.raise_for_status()
+            return response.json().get('result', {}).get('elements', [])
+        except Exception as e:
+            _LOGGER.error("获取场景列表失败: %s", e)
             return False  # 返回默认值
     # 获取设备
     async def getProperties(self, hass, params):
         try:
             response = await hass.async_add_executor_job(self.devicePost, params)
-            # print(response.json())
+            if not response:
+                return False
             response.raise_for_status()  # 检查请求是否成功
-            device_property = response.json()['result']['deviceProperty']
+            device_property = response.json().get('result', {}).get('deviceProperty')
             if device_property and len(device_property) > 0:
                 return device_property
             else:
                 return False
-        except requests.exceptions.RequestException as e:
-            print('请求失败:', e)
+        except Exception as e:
+            _LOGGER.error("获取设备属性失败: %s", e)
             return False  # 返回默认值

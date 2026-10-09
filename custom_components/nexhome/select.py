@@ -1,15 +1,15 @@
 import logging
 import asyncio
 from homeassistant.components.select import SelectEntity
-from .const import TIME_NUMBER, DEVICES, DOMAIN, SCENES, IP_CONFIG, SN_CONFIG
+from .const import SCENE_POLL_INTERVAL, DEVICES, DOMAIN, SCENES, IP_CONFIG, SN_CONFIG, PUSH_ENABLED
 from .nexhome_entity import NexhomeEntity
 from .header import ServiceTool
 from .nexhome_device import NEXHOME_DEVICE
 from .nexhome_coordinator import NexhomeCoordinator
 from .coordinator_manager import CoordinatorManager
+from .gateway_scheduler import get_gateway_scheduler, POLL_SKIPPED
 from .utils import get_key_from_value
 from homeassistant.const import Platform
-from homeassistant.config_entries import ConfigEntryState
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -19,7 +19,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     devices = hass.data[DOMAIN][DEVICES]
     
     # 获取协调器管理器实例
-    coordinator_manager = CoordinatorManager.get_instance(hass, Tool, config_entry.entry_id)
+    push_enabled = hass.data.get(DOMAIN, {}).get(PUSH_ENABLED, False)
+    coordinator_manager = CoordinatorManager.get_instance(hass, Tool, config_entry.entry_id, push_enabled)
     
     if devices:
         selects = []
@@ -32,8 +33,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                         identifiers = config["identifiers"]
                         # 使用协调器管理器获取或创建共享协调器
                         coordinator = coordinator_manager.get_or_create_coordinator(device_address, identifiers)
-                        if config_entry.state == ConfigEntryState.SETUP_IN_PROGRESS:
-                            await coordinator.async_config_entry_first_refresh()
                         if device_key == 'default':
                             selects.append(NexhomeSceneSelect(device, entity_key, Tool, coordinator))
                         else:
@@ -61,7 +60,7 @@ class NexhomeSelect(NexhomeEntity, SelectEntity):
     def select_option(self, option: str):
         value = get_key_from_value(self._select_list, option)
         data = {'identifier': self._select_key, 'value': value}
-        self._tool.device_control(data, self._device['address'])
+        self._async_device_control(data)
 
     # async def _update_state(self):
     #     params = [
@@ -95,11 +94,11 @@ class NexhomeSceneSelect(NexhomeSelect):
             if item.get("name") == option:
                 value = item.get("id")
                 data = {'identifier': self._select_key, 'value': str(value)}  # 将value转换为字符串
-                self._tool.device_control(data, self._device['address'])
+                self._async_device_control(data)
                 break
         # value = get_key_from_value(self._select_list, option)
         # data = {'identifier': self._select_key, 'value': value}
-        # self._tool.device_control(data, self._device['address'])
+        # self._async_device_control(data)
 
     async def async_added_to_hass(self):
         await super().async_added_to_hass()
@@ -108,14 +107,26 @@ class NexhomeSceneSelect(NexhomeSelect):
 
     async def async_poll_properties(self):
         while True:
-            await asyncio.sleep(TIME_NUMBER)
+            await asyncio.sleep(SCENE_POLL_INTERVAL)
             await self._update_state()
 
     async def _update_state(self):
-        scenes = await self._tool.getScene(self.hass)  # 调用获取属性值的方法
-        if scenes is not None:
+        scenes = await self._fetch_scenes()
+        if scenes:
             if SCENES not in self.hass.data[DOMAIN]:
                 self.hass.data[DOMAIN][SCENES] = {}
             self.hass.data[DOMAIN][SCENES] = scenes
             self._select_list = scenes
             self.schedule_update_ha_state()
+
+    async def _fetch_scenes(self):
+        """经网关调度器拉取场景列表（与设备轮询共用串行通道，控制优先）。"""
+        try:
+            response = await get_gateway_scheduler(self.hass).async_poll(self._tool.sceneList)
+            if response is POLL_SKIPPED or not response:
+                return None
+            response.raise_for_status()
+            return response.json().get('result', {}).get('elements', [])
+        except Exception as e:
+            _LOGGER.error("获取场景列表失败: %s", e)
+            return None
