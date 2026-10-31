@@ -1,8 +1,14 @@
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import selector
 from .const import (
     DOMAIN, SN_CONFIG, IP_CONFIG, FILTER_MODE_CONFIG, FILTER_DEVICES_CONFIG,
+    TIME_NUMBER, OPT_POLL_INTERVAL, OPT_IDLE_MAX_INTERVAL, OPT_QUIET_ENABLED,
+    OPT_QUIET_START, OPT_QUIET_END, OPT_QUIET_INTERVAL,
+    DEFAULT_IDLE_MAX_INTERVAL, DEFAULT_QUIET_ENABLED, DEFAULT_QUIET_START,
+    DEFAULT_QUIET_END, DEFAULT_QUIET_INTERVAL,
 )
 from .header import ServiceTool
 
@@ -33,6 +39,11 @@ def validate_ip_port(value):
     return value
 
 class NexhomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        return NexhomeOptionsFlow()
 
     async def async_step_user(self, user_input=None, errors=None):
         errors = errors or {}
@@ -120,3 +131,52 @@ class NexhomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "note": "在排除模式中,如果不勾选任何设备,则相当于接入所有设备"
             }
         )
+
+
+def _seconds_selector(minimum: int, maximum: int) -> selector.NumberSelector:
+    return selector.NumberSelector(
+        selector.NumberSelectorConfig(
+            min=minimum, max=maximum, step=1,
+            unit_of_measurement="s", mode=selector.NumberSelectorMode.BOX,
+        )
+    )
+
+
+class NexhomeOptionsFlow(config_entries.OptionsFlow):
+    """轮询策略选项：活跃/空闲间隔与静默时段。"""
+
+    async def async_step_init(self, user_input=None):
+        if user_input is not None:
+            data = {
+                **user_input,
+                OPT_POLL_INTERVAL: int(user_input[OPT_POLL_INTERVAL]),
+                OPT_IDLE_MAX_INTERVAL: int(user_input[OPT_IDLE_MAX_INTERVAL]),
+                OPT_QUIET_INTERVAL: int(user_input[OPT_QUIET_INTERVAL]),
+            }
+            return self.async_create_entry(data=data)
+
+        options = self.config_entry.options
+        schema = vol.Schema({
+            vol.Required(
+                OPT_POLL_INTERVAL, default=options.get(OPT_POLL_INTERVAL, TIME_NUMBER)
+            ): _seconds_selector(1, 60),
+            vol.Required(
+                OPT_IDLE_MAX_INTERVAL,
+                default=options.get(OPT_IDLE_MAX_INTERVAL, DEFAULT_IDLE_MAX_INTERVAL),
+            ): _seconds_selector(1, 600),
+            vol.Required(
+                OPT_QUIET_ENABLED,
+                default=options.get(OPT_QUIET_ENABLED, DEFAULT_QUIET_ENABLED),
+            ): selector.BooleanSelector(),
+            vol.Required(
+                OPT_QUIET_START, default=options.get(OPT_QUIET_START, DEFAULT_QUIET_START)
+            ): selector.TimeSelector(),
+            vol.Required(
+                OPT_QUIET_END, default=options.get(OPT_QUIET_END, DEFAULT_QUIET_END)
+            ): selector.TimeSelector(),
+            vol.Required(
+                OPT_QUIET_INTERVAL,
+                default=options.get(OPT_QUIET_INTERVAL, DEFAULT_QUIET_INTERVAL),
+            ): _seconds_selector(0, 3600),
+        })
+        return self.async_show_form(step_id="init", data_schema=schema)
