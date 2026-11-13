@@ -12,18 +12,22 @@ class CoordinatorManager:
     
     _instances: Dict[str, 'CoordinatorManager'] = {}
     
-    def __init__(self, hass, tool: ServiceTool, push_enabled: bool = False):
+    def __init__(self, hass, tool: ServiceTool, push_enabled: bool = False, options=None):
         self.hass = hass
         self.tool = tool
         self._push_enabled = push_enabled
         # 整个网关共用一个协调器，合并为一次 realtime 请求轮询所有设备
-        self._coordinator = NexhomeCoordinator(hass, tool, push_enabled=push_enabled)
+        self._coordinator = NexhomeCoordinator(
+            hass, tool, options=options, push_enabled=push_enabled
+        )
 
     @classmethod
     def get_instance(cls, hass, tool: ServiceTool, config_entry_id: str, push_enabled: bool = False):
         """获取或创建协调器管理器实例"""
         if config_entry_id not in cls._instances:
-            cls._instances[config_entry_id] = cls(hass, tool, push_enabled)
+            entry = hass.config_entries.async_get_entry(config_entry_id)
+            options = dict(entry.options) if entry else {}
+            cls._instances[config_entry_id] = cls(hass, tool, push_enabled, options)
         return cls._instances[config_entry_id]
 
     @classmethod

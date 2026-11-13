@@ -3,6 +3,7 @@ import logging
 from .const import DOMAIN, DEVICES, SIGNAL_PUSH_UPDATE
 from .utils import format_upd_mes
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from .gateway_scheduler import get_gateway_scheduler
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,6 +57,9 @@ class UDPListener(asyncio.DatagramProtocol):
             _LOGGER.debug(
                 "UDP 推送: 设备 %s, %s = %s", address, identifier, value
             )
+
+            # 有推送说明有人在操作，轮询恢复基础间隔
+            get_gateway_scheduler(self.hass).note_activity()
 
             # 通过 dispatcher 分发状态更新信号给对应设备的所有实体
             signal = f"{SIGNAL_PUSH_UPDATE}_{address}"

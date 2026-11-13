@@ -27,12 +27,30 @@ class GatewayScheduler:
         self._poll_lock = asyncio.Lock()
         self._controls_in_flight = 0
         self._pause_until = 0.0
+        # 最近一次活动时间（状态变化/推送/控制），启动时视为活跃
+        self.last_activity = time.monotonic()
+        self._activity_listeners = []
+
+    def add_activity_listener(self, listener):
+        """注册活动回调，返回取消注册函数。"""
+        self._activity_listeners.append(listener)
+        return lambda: self._activity_listeners.remove(listener)
+
+    def note_activity(self) -> None:
+        """记录一次活动（必须在事件循环中调用），通知轮询恢复到基础间隔。"""
+        self.last_activity = time.monotonic()
+        for listener in list(self._activity_listeners):
+            listener()
+
+    def idle_seconds(self) -> float:
+        return time.monotonic() - self.last_activity
 
     def polls_paused(self) -> bool:
         return self._controls_in_flight > 0 or time.monotonic() < self._pause_until
 
     async def async_control(self, func, *args):
         """以最高优先级发送控制请求，期间及之后短时间内暂停轮询。"""
+        self.note_activity()
         self._controls_in_flight += 1
         self._pause_until = time.monotonic() + CONTROL_POLL_PAUSE_SECONDS
         try:

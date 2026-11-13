@@ -33,8 +33,29 @@ POLL_BATCH_SIZE = 400
 # 场景列表刷新间隔（秒），场景很少变化，无需高频拉取
 SCENE_POLL_INTERVAL = 60
 
-# 轮询时间（秒）
+# 轮询时间（秒）：有活动时的基础轮询间隔
 TIME_NUMBER = 3
+
+# ---- 自适应轮询（选项中可配置） ----
+OPT_POLL_INTERVAL = "poll_interval"            # 活跃时轮询间隔（秒）
+OPT_IDLE_MAX_INTERVAL = "idle_max_interval"    # 空闲时轮询间隔上限（秒）
+OPT_QUIET_ENABLED = "quiet_enabled"            # 是否启用静默时段（如夜间）
+OPT_QUIET_START = "quiet_start"                # 静默时段开始（HH:MM:SS）
+OPT_QUIET_END = "quiet_end"                    # 静默时段结束（HH:MM:SS）
+OPT_QUIET_INTERVAL = "quiet_interval"          # 静默时段空闲轮询间隔（秒），0 = 停止轮询仅靠推送
+DEFAULT_IDLE_MAX_INTERVAL = 30
+DEFAULT_QUIET_ENABLED = False
+DEFAULT_QUIET_START = "23:00:00"
+DEFAULT_QUIET_END = "07:00:00"
+DEFAULT_QUIET_INTERVAL = 300
+# 最近一次活动（状态变化/推送/控制）后保持基础间隔的时长（秒），之后开始逐步拉长
+ACTIVE_WINDOW_SECONDS = 60
+# 静默时段停止轮询时，协调器检查是否需要恢复的间隔（秒，不发请求）
+PAUSED_CHECK_SECONDS = 60
+# 持续波动的测量值，不作为“有人操作”的活动信号
+SENSOR_IDENTIFIERS = {
+    "Temperature", "Humidity", "PM25", "PM10", "HCHO", "CO2", "LUX", "VOC",
+}
 
 FAN_MODEL_MAP = {
     "0": "自动",

@@ -22,6 +22,21 @@
                 "title": "Filter Devices"
             }
         }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Polling strategy",
+                "description": "While active, devices are polled at the active interval. After 1 minute without changes the interval grows step by step up to the idle maximum. Controlling a device in HA, receiving a gateway push, or a change detected by polling (e.g. a wall panel) switches back to fast polling immediately.\n\nDuring quiet hours (e.g. night) the quiet interval is used while idle; 0 stops polling entirely and relies on push and controls to wake it up.",
+                "data": {
+                    "poll_interval": "Active poll interval (s)",
+                    "idle_max_interval": "Idle poll interval maximum (s)",
+                    "quiet_enabled": "Enable quiet hours",
+                    "quiet_start": "Quiet hours start",
+                    "quiet_end": "Quiet hours end",
+                    "quiet_interval": "Quiet hours poll interval (s, 0 = stop polling)"
+                }
+            }
+        }
     }
 }
-
