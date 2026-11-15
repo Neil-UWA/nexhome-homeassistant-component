@@ -34,7 +34,13 @@ class GatewayScheduler:
     def add_activity_listener(self, listener):
         """注册活动回调，返回取消注册函数。"""
         self._activity_listeners.append(listener)
-        return lambda: self._activity_listeners.remove(listener)
+
+        def _remove() -> None:
+            # 可能被重复调用（HA 停止与配置项卸载都会触发协调器关闭）
+            if listener in self._activity_listeners:
+                self._activity_listeners.remove(listener)
+
+        return _remove
 
     def note_activity(self) -> None:
         """记录一次活动（必须在事件循环中调用），通知轮询恢复到基础间隔。"""
